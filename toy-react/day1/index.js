@@ -10,7 +10,7 @@ class MyComponent extends Component {
 }
 
 render(<MyComponent id='a' class='c'>
-  <div>111</div>
+  <div id='a' class='c'>111</div>
   <div>222</div>
   <div>3333</div>
 </MyComponent>,document.body)

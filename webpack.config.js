@@ -1,7 +1,9 @@
 module.exports = {
   mode:"development",
   entry:{
-    day1:'./toy-react/day1/index.js'
+    day1:'./toy-react/day1/index.js',
+    day2:'./toy-react/day2/index.js',
+    day3:'./toy-react/day3/index.js'
   },
   module:{
     rules:[
@@ -20,7 +22,7 @@ module.exports = {
       }
     ]
   },
-  // optimization:{
-  //   minimize:false
-  // }
+  optimization:{
+    minimize:false
+  }
 }
