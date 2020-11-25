@@ -1,5 +1,7 @@
 import {createElement,Component,render} from './toy-react'
 
+// TODO: judge render
+
 // 暂时不支持函数式组件
 // function Square(props) {
 //   return (

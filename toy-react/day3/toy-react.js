@@ -1,5 +1,6 @@
 const RENDER_TO_DOM = Symbol('render to dom')
 
+// 组件
 export class Component {
   constructor() {
     this.props = Object.create(null)
@@ -19,7 +20,6 @@ export class Component {
   get vdom() {
     const res = this.render()
     console.log('get vdom render', res)
-    debugger
     return res.vdom
   }
 
@@ -30,10 +30,82 @@ export class Component {
   }
 
   update() {
-    let isSame
+    // 判断是否相同节点 （简单版）
+    let isSameNode = (oldNode, newNode) => {
+
+      if (oldNode.type !== newNode.type) {
+        return false
+      }
+
+      for (let name in newNode.props) {
+        if (newNode.props[name] !== oldNode.props[name]) {
+          return false
+        }
+      }
+
+      if (
+        Object.keys(oldNode.props).length > Object.keys(newNode.props).length
+      ) {
+        return false
+      }
+
+      if (newNode.type == '#text') {
+        if (newNode.content !== oldNode.content) {
+          return false
+        }
+      }
+
+      return true
+    }
+
+    let update = (oldNode, newNode) => {
+      
+      // type,props,children
+      // #text content
+      if (!isSameNode(oldNode, newNode)) {
+        newNode[RENDER_TO_DOM](oldNode._range)
+        return
+      }
+      newNode._range = oldNode._range
+
+      // patch children
+      let newChildren = newNode.vchildren
+      let oldChildren = oldNode.vchildren
+
+      // console.log('oldNode.vchildren',oldNode.vchildren)
+      // console.log('newNode.vchildren',newNode.vchildren)
+    
+
+    if (!newChildren || !newChildren.length) {
+      return
+    }
+
+    let tailRange = oldChildren[oldChildren.length - 1]._range
+
+      for(let i=0;i<newChildren.length;i++){
+        let newChild = newChildren[i]
+        let oldChild = oldChildren[i]
+        if(i < oldChildren.length){
+          update(oldChild,newChild)
+        }else{
+          let range = document.createRange()
+          range.setStart(tailRange.endContainer,tailRange.endOffset)
+          range.setEnd(tailRange.endContainer,tailRange.endOffset)
+          newChild[RENDER_TO_DOM](range)
+          tailRange  = range 
+          // TODO: update 
+        }
+      }
+    }
+
+    let vdom = this.vdom
+    update(this._vdom,vdom)
+    this._vdom = vdom
   }
 
   setState(newState) {
+    console.log('setState',newState)
+    
     if (this.state === null || typeof this.state !== 'object') {
       // 第一次渲染
       this.state = newState
@@ -59,6 +131,8 @@ export class Component {
   }
 }
 
+
+// 元素
 class ElementWrapper extends Component {
   constructor(type) {
     super(type)
@@ -79,15 +153,15 @@ class ElementWrapper extends Component {
       let value = this.props[name]
       if (name.match(/^on([\s\S]+)$/)) {
         // 把匹配到的首字母变为小写
-        this.root.addEventListener(
+        root.addEventListener(
           RegExp.$1.replace(/^[\s\S]/, (c) => c.toLocaleLowerCase()),
           value
         )
       } else {
         if (name == 'className') {
-          this.root.setAttribute('class', value)
+          root.setAttribute('class', value)
         } else {
-          this.root.setAttribute(name, value)
+          root.setAttribute(name, value)
         }
       }
     }
@@ -120,28 +194,22 @@ class TextWrapper extends Component {
 
   [RENDER_TO_DOM](range) {
     this._range = range
+
     let root = document.createTextNode(this.content)
     replaceContent(range, root)
   }
 }
 
-
-function replaceContent(range,node){
+function replaceContent(range, node) {
   range.insertNode(node)
   // 下面的两步是为了防止 range出错
   range.setStartAfter(node)
-  range.deletContents()
+  range.deleteContents()
 
   // 替换
   range.setStartBefore(node)
   range.setEndAfter(node)
 }
-
-
-
-
-
-
 
 export function createElement(type, attributes, ...children) {
   let e
@@ -158,11 +226,27 @@ export function createElement(type, attributes, ...children) {
   let insertChildren = (children) => {
     for (let child of children) {
       if (typeof child == 'string') {
-        child = new TextW()
+        child = new TextWrapper(child)
+      }
+      if (child === null) {
+        continue
+      }
+      if (typeof child === 'object' && child instanceof Array) {       
+        insertChildren(child)
+      } else {
+        e.appendChild(child)
       }
     }
   }
 
   insertChildren(children)
   return e
+}
+
+export function render(component, parentElement) {
+  let range = document.createRange()
+  range.setStart(parentElement, 0)
+  range.setEnd(parentElement, parentElement.childNodes.length)
+  range.deleteContents()
+  component[RENDER_TO_DOM](range)
 }
